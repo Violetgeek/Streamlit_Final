@@ -1,5 +1,6 @@
 import streamlit as st
 from st_audiorec import st_audiorec
+from audiorecorder import audiorecorder
 import speech_recognition as sr
 import tempfile
 import hashlib

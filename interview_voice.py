@@ -1,6 +1,4 @@
 import streamlit as st
-from st_audiorec import st_audiorec
-from audiorecorder import audiorecorder
 import speech_recognition as sr
 import tempfile
 import hashlib
@@ -24,20 +22,21 @@ def voice_input_component():
         if "last_audio_hash" not in st.session_state:
             st.session_state.last_audio_hash = None
 
-        audio_bytes = st_audiorec()
-
+        # st.audio_input을 사용하여 오디오 녹음
+        audio_file = st.audio_input("음성 답변을 녹음하세요 (최대 60초)", type=["wav"])
         recognized_text = None
         MIN_AUDIO_SIZE = 2048  # 2KB 이상만 정상 녹음으로 간주
 
-        current_audio_hash = hashlib.md5(audio_bytes).hexdigest() if audio_bytes else None
+        current_audio_hash = (
+            hashlib.md5(audio_file.getvalue()).hexdigest() if audio_file else None
+        )
 
-        if audio_bytes and current_audio_hash != st.session_state.last_audio_hash:
+        if audio_file and current_audio_hash != st.session_state.last_audio_hash:
             st.session_state.last_audio_hash = current_audio_hash
 
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-                audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes), format="wav")
-                audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-                audio_segment.export(tmpfile.name, format="wav")
+                # 업로드된 파일을 임시 파일로 저장
+                tmpfile.write(audio_file.getvalue())
                 st.audio(tmpfile.name)
 
                 file_size = os.path.getsize(tmpfile.name)
@@ -54,7 +53,6 @@ def voice_input_component():
                         st.success("✅ 음성 인식 완료!")
                         st.markdown(f"**인식 결과:**\n{recognized_text}")
                         st.session_state.user_answer = recognized_text
-
                     except sr.UnknownValueError:
                         st.error("❌ 음성을 이해할 수 없습니다. (무음이거나 잡음일 수 있습니다.)")
                     except sr.RequestError as e:

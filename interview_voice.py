@@ -10,9 +10,9 @@ def voice_input_component():
     with st.container():
         st.subheader("🎤 음성 답변 입력")
         st.info(
-            "최초 사용 시 브라우저 마이크 권한 허용 및 컴포넌트 준비로 인해, "
-            "첫 녹음은 무음일 수 있습니다. 두 번째부터 정상 녹음이 시작됩니다. "
-            "Start - Start - Stop - Start"
+            "면접 질문에 대한 답변을 음성으로 입력하세요. "
+            "최대 60초 동안 녹음할 수 있습니다. "
+            "녹음이 완료되면 자동으로 음성을 인식하여 텍스트로 변환합니다."
         )
         st.caption(
             "1. '녹음 시작' 버튼을 클릭하고 답변을 말하세요.\n"
@@ -22,8 +22,7 @@ def voice_input_component():
         if "last_audio_hash" not in st.session_state:
             st.session_state.last_audio_hash = None
 
-        # st.audio_input을 사용하여 오디오 녹음
-        audio_file = st.audio_input("음성 답변을 녹음하세요 (최대 60초)", type=["wav"])
+        audio_file = st.audio_input("음성 답변을 녹음하세요 (최대 60초)")
         recognized_text = None
         MIN_AUDIO_SIZE = 2048  # 2KB 이상만 정상 녹음으로 간주
 
@@ -34,16 +33,19 @@ def voice_input_component():
         if audio_file and current_audio_hash != st.session_state.last_audio_hash:
             st.session_state.last_audio_hash = current_audio_hash
 
+            # 오디오 파일을 명확히 변환
+            audio_bytes = audio_file.getvalue()
+            audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            audio_segment = audio_segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmpfile:
-                # 업로드된 파일을 임시 파일로 저장
-                tmpfile.write(audio_file.getvalue())
+                audio_segment.export(tmpfile.name, format="wav")
                 st.audio(tmpfile.name)
 
                 file_size = os.path.getsize(tmpfile.name)
                 st.write(f"녹음 파일 크기: {file_size} bytes")
                 if file_size < MIN_AUDIO_SIZE:
                     st.warning("녹음 준비가 완료되었습니다. 한 번 더 녹음 버튼을 눌러주세요.")
-                    return None  # 너무 짧은 파일은 인식 시도하지 않음
+                    return None
 
                 recognizer = sr.Recognizer()
                 with sr.AudioFile(tmpfile.name) as source:
